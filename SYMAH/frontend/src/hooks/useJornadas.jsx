@@ -3,25 +3,26 @@ import * as JornadasService from "../services/JornadasService.jsx";
 
 export default function useJornadas(empleadoId) {
   const [jornadas, setJornadas] = useState([]);
+  const [trabajosOptions, setTrabajosOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [filtroMes, setFiltroMes] = useState("todos");
   const [filtroAnio, setFiltroAnio] = useState("todos");
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    // Simular llamada asíncrona
-    setTimeout(() => {
-      try {
-        const data = JornadasService.getJornadasByEmpleado(empleadoId || "");
-        setJornadas(data);
-      } catch (e) {
-        setError(e);
-      } finally {
-        setLoading(false);
-      }
-    }, 120);
+
+    try {
+      const data = await JornadasService.getJornadasByEmpleado(
+        empleadoId || "",
+      );
+      setJornadas(data);
+    } catch (loadError) {
+      setError(loadError);
+    } finally {
+      setLoading(false);
+    }
   }, [empleadoId]);
 
   useEffect(() => {
@@ -32,6 +33,29 @@ export default function useJornadas(empleadoId) {
     setFiltroMes("todos");
     setFiltroAnio("todos");
   }, [empleadoId]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadTrabajosOptions() {
+      try {
+        const options = await JornadasService.listarTrabajosParaSelect();
+        if (mounted) {
+          setTrabajosOptions(options);
+        }
+      } catch {
+        if (mounted) {
+          setTrabajosOptions([]);
+        }
+      }
+    }
+
+    loadTrabajosOptions();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const jornadasFiltradas = useMemo(
     () =>
@@ -73,58 +97,46 @@ export default function useJornadas(empleadoId) {
   const create = useCallback(async (payload) => {
     setLoading(true);
     setError(null);
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        try {
-          const nuevo = JornadasService.createJornada(payload);
-          setJornadas((s) => [...s, nuevo]);
-          resolve(nuevo);
-        } catch (e) {
-          setError(e);
-          resolve(null);
-        } finally {
-          setLoading(false);
-        }
-      }, 180);
-    });
+    try {
+      const nuevo = await JornadasService.createJornada(payload);
+      setJornadas((s) => [...s, nuevo]);
+      return nuevo;
+    } catch (createError) {
+      setError(createError);
+      return null;
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const update = useCallback(async (id, patch) => {
     setLoading(true);
     setError(null);
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        try {
-          const updated = JornadasService.updateJornada(id, patch);
-          setJornadas((s) => s.map((j) => (j.id === id ? updated : j)));
-          resolve(updated);
-        } catch (e) {
-          setError(e);
-          resolve(null);
-        } finally {
-          setLoading(false);
-        }
-      }, 180);
-    });
+    try {
+      const updated = await JornadasService.updateJornada(id, patch);
+      setJornadas((s) => s.map((j) => (j.id === id ? updated : j)));
+      return updated;
+    } catch (updateError) {
+      setError(updateError);
+      return null;
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const remove = useCallback(async (id) => {
     setLoading(true);
     setError(null);
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        try {
-          const ok = JornadasService.deleteJornada(id);
-          if (ok) setJornadas((s) => s.filter((j) => j.id !== id));
-          resolve(ok);
-        } catch (e) {
-          setError(e);
-          resolve(false);
-        } finally {
-          setLoading(false);
-        }
-      }, 160);
-    });
+    try {
+      const ok = await JornadasService.deleteJornada(id);
+      if (ok) setJornadas((s) => s.filter((j) => j.id !== id));
+      return ok;
+    } catch (deleteError) {
+      setError(deleteError);
+      return false;
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   return {
@@ -142,6 +154,6 @@ export default function useJornadas(empleadoId) {
     create,
     update,
     remove,
-    listarTrabajosParaSelect: JornadasService.listarTrabajosParaSelect,
+    trabajosOptions,
   };
 }

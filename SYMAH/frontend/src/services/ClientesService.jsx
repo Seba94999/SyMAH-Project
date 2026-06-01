@@ -1,83 +1,16 @@
+import { apiDelete, apiGet, apiPatch, apiPost } from "./apiClient.js";
+
 const CLIENT_STATUS = {
   activo: "Activo",
   enRiesgo: "En riesgo",
   inactivo: "Inactivo",
 };
 
-let CLIENTES_BASE = [
-  {
-    id: "CL-001",
-    nombre: "Constructora Valle Azul",
-    rubro: "Construccion",
-    ciudad: "Santiago",
-    estado: "activo",
-    contacto: "Mariana Soto",
-    correo: "mariana.soto@valleazul.cl",
-    telefono: "+56 9 4567 8890",
-    ultimoTrabajo: "Mantencion de estructura norte",
-    balancePendiente: 1850000,
-  },
-  {
-    id: "CL-002",
-    nombre: "Logistica Ruta Sur",
-    rubro: "Logistica",
-    ciudad: "Concepcion",
-    estado: "enRiesgo",
-    contacto: "Luis Barrera",
-    correo: "lbarrera@rutasur.cl",
-    telefono: "+56 9 3344 9900",
-    ultimoTrabajo: "Revision de patio de carga",
-    balancePendiente: 3290000,
-  },
-  {
-    id: "CL-003",
-    nombre: "Clinica San Gabriel",
-    rubro: "Salud",
-    ciudad: "Valparaiso",
-    estado: "activo",
-    contacto: "Daniela Rojas",
-    correo: "daniela.rojas@csangabriel.cl",
-    telefono: "+56 9 7766 2211",
-    ultimoTrabajo: "Acondicionamiento de pabellon B",
-    balancePendiente: 740000,
-  },
-  {
-    id: "CL-004",
-    nombre: "Mercados del Pacífico",
-    rubro: "Retail",
-    ciudad: "La Serena",
-    estado: "inactivo",
-    contacto: "Fernando Guerra",
-    correo: "fernando.guerra@mdp.cl",
-    telefono: "+56 9 2288 7711",
-    ultimoTrabajo: "Remodelacion de sala de ventas",
-    balancePendiente: 0,
-  },
-  {
-    id: "CL-005",
-    nombre: "Energia Nova",
-    rubro: "Energia",
-    ciudad: "Temuco",
-    estado: "activo",
-    contacto: "Carolina Mella",
-    correo: "cmella@energianova.cl",
-    telefono: "+56 9 1122 3344",
-    ultimoTrabajo: "Inspeccion de lineas internas",
-    balancePendiente: 990000,
-  },
-];
-
 export function getClientesBase() {
-  return CLIENTES_BASE;
+  return apiGet("/clientes");
 }
 
-function generarClienteId() {
-  const last = CLIENTES_BASE[CLIENTES_BASE.length - 1];
-  const nextNumber = last ? Number(last.id.split("-")[1]) + 1 : 1;
-  return `CL-${String(nextNumber).padStart(3, "0")}`;
-}
-
-export function getClientesResumen(clientes = CLIENTES_BASE) {
+export function getClientesResumen(clientes = []) {
   const activos = clientes.filter(
     (cliente) => cliente.estado === "activo",
   ).length;
@@ -138,34 +71,16 @@ export function obtenerClaseEstado(estado) {
 }
 
 export function createCliente(cliente) {
-  const nuevoCliente = {
-    ...cliente,
-    id: generarClienteId(),
-  };
-
-  CLIENTES_BASE = [...CLIENTES_BASE, nuevoCliente];
-  return nuevoCliente;
+  return apiPost("/clientes", cliente);
 }
 
 export function updateCliente(clienteId, patch) {
-  let updatedCliente = null;
-
-  CLIENTES_BASE = CLIENTES_BASE.map((cliente) => {
-    if (cliente.id !== clienteId) {
-      return cliente;
-    }
-
-    updatedCliente = { ...cliente, ...patch, id: cliente.id };
-    return updatedCliente;
-  });
-
-  return updatedCliente;
+  return apiPatch(`/clientes/${clienteId}`, patch);
 }
 
-export function deleteCliente(clienteId) {
-  const exists = CLIENTES_BASE.some((cliente) => cliente.id === clienteId);
-  CLIENTES_BASE = CLIENTES_BASE.filter((cliente) => cliente.id !== clienteId);
-  return exists;
+export async function deleteCliente(clienteId) {
+  await apiDelete(`/clientes/${clienteId}`);
+  return true;
 }
 
 export { CLIENT_STATUS };

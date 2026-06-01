@@ -113,7 +113,7 @@ export default function EmpleadosPage() {
     create: crearJornada,
     update: actualizarJornada,
     remove: eliminarJornada,
-    listarTrabajosParaSelect,
+    trabajosOptions,
   } = useJornadas(empleadoSeleccionado?.id);
 
   const [openForm, setOpenForm] = useState(false);
@@ -386,7 +386,7 @@ export default function EmpleadosPage() {
       <JornadaFormModal
         open={openForm}
         initial={editing}
-        trabajosOptions={listarTrabajosParaSelect()}
+        trabajosOptions={trabajosOptions}
         onClose={() => {
           setOpenForm(false);
           setEditing(null);

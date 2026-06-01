@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createCliente,
   deleteCliente,
@@ -9,11 +9,29 @@ import {
 } from "../services/ClientesService.jsx";
 
 export default function useClientes() {
+  const [clientes, setClientes] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const clientes = getClientesBase();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await getClientesBase();
+      setClientes(data);
+    } catch (loadError) {
+      setError(loadError);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const clientesFiltrados = useMemo(
     () => filtrarClientes(clientes, { busqueda, filtroEstado }),
@@ -24,8 +42,15 @@ export default function useClientes() {
 
   const create = useCallback(async (payload) => {
     setLoading(true);
+    setError(null);
+
     try {
-      return createCliente(payload);
+      const created = await createCliente(payload);
+      setClientes((current) => [...current, created]);
+      return created;
+    } catch (createError) {
+      setError(createError);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -33,8 +58,19 @@ export default function useClientes() {
 
   const update = useCallback(async (clienteId, patch) => {
     setLoading(true);
+    setError(null);
+
     try {
-      return updateCliente(clienteId, patch);
+      const updated = await updateCliente(clienteId, patch);
+      setClientes((current) =>
+        current.map((cliente) =>
+          cliente.id === clienteId ? updated : cliente,
+        ),
+      );
+      return updated;
+    } catch (updateError) {
+      setError(updateError);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -42,8 +78,17 @@ export default function useClientes() {
 
   const remove = useCallback(async (clienteId) => {
     setLoading(true);
+    setError(null);
+
     try {
-      return deleteCliente(clienteId);
+      await deleteCliente(clienteId);
+      setClientes((current) =>
+        current.filter((cliente) => cliente.id !== clienteId),
+      );
+      return true;
+    } catch (deleteError) {
+      setError(deleteError);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -51,6 +96,8 @@ export default function useClientes() {
 
   return {
     loading,
+    error,
+    reload: load,
     clientes,
     clientesFiltrados,
     resumen,

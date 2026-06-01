@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createEmpleado,
   deleteEmpleado,
@@ -9,11 +9,29 @@ import {
 } from "../services/EmpleadosService.jsx";
 
 export default function useEmpleados() {
+  const [empleados, setEmpleados] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const empleados = getEmpleadosBase();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await getEmpleadosBase();
+      setEmpleados(data);
+    } catch (loadError) {
+      setError(loadError);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const empleadosFiltrados = useMemo(
     () => filtrarEmpleados(empleados, { busqueda, filtroEstado }),
@@ -24,8 +42,15 @@ export default function useEmpleados() {
 
   const create = useCallback(async (payload) => {
     setLoading(true);
+    setError(null);
+
     try {
-      return createEmpleado(payload);
+      const created = await createEmpleado(payload);
+      setEmpleados((current) => [...current, created]);
+      return created;
+    } catch (createError) {
+      setError(createError);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -33,8 +58,19 @@ export default function useEmpleados() {
 
   const update = useCallback(async (empleadoId, patch) => {
     setLoading(true);
+    setError(null);
+
     try {
-      return updateEmpleado(empleadoId, patch);
+      const updated = await updateEmpleado(empleadoId, patch);
+      setEmpleados((current) =>
+        current.map((empleado) =>
+          empleado.id === empleadoId ? updated : empleado,
+        ),
+      );
+      return updated;
+    } catch (updateError) {
+      setError(updateError);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -42,8 +78,17 @@ export default function useEmpleados() {
 
   const remove = useCallback(async (empleadoId) => {
     setLoading(true);
+    setError(null);
+
     try {
-      return deleteEmpleado(empleadoId);
+      await deleteEmpleado(empleadoId);
+      setEmpleados((current) =>
+        current.filter((empleado) => empleado.id !== empleadoId),
+      );
+      return true;
+    } catch (deleteError) {
+      setError(deleteError);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -51,6 +96,8 @@ export default function useEmpleados() {
 
   return {
     loading,
+    error,
+    reload: load,
     empleados,
     empleadosFiltrados,
     resumen,

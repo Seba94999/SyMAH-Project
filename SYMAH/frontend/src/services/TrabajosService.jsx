@@ -1,4 +1,5 @@
 import { formatCurrency } from "../utils/formatters.js";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./apiClient.js";
 
 const TRABAJOS_STATUS = {
   enCurso: "En curso",
@@ -7,75 +8,11 @@ const TRABAJOS_STATUS = {
   cancelado: "Cancelado",
 };
 
-let TRABAJOS_BASE = [
-  {
-    id: "TR-001",
-    nombre: "Mantención estructura norte",
-    cliente: "Constructora Valle Azul",
-    responsable: "Ana Torres",
-    estado: "enCurso",
-    prioridad: "Alta",
-    progreso: 72,
-    monto: 18500000,
-    ultimaActualizacion: "2026-05-26",
-  },
-  {
-    id: "TR-002",
-    nombre: "Revisión patio de carga",
-    cliente: "Logistica Ruta Sur",
-    responsable: "Marco Fuentes",
-    estado: "enPausa",
-    prioridad: "Media",
-    progreso: 41,
-    monto: 9200000,
-    ultimaActualizacion: "2026-05-23",
-  },
-  {
-    id: "TR-003",
-    nombre: "Acondicionamiento pabellón B",
-    cliente: "Clinica San Gabriel",
-    responsable: "Carla Medina",
-    estado: "finalizado",
-    prioridad: "Alta",
-    progreso: 100,
-    monto: 12400000,
-    ultimaActualizacion: "2026-05-20",
-  },
-  {
-    id: "TR-004",
-    nombre: "Remodelación sala de ventas",
-    cliente: "Mercados del Pacífico",
-    responsable: "Pedro Silva",
-    estado: "cancelado",
-    prioridad: "Baja",
-    progreso: 18,
-    monto: 6700000,
-    ultimaActualizacion: "2026-05-16",
-  },
-  {
-    id: "TR-005",
-    nombre: "Inspección de líneas internas",
-    cliente: "Energia Nova",
-    responsable: "Ana Torres",
-    estado: "enCurso",
-    prioridad: "Media",
-    progreso: 58,
-    monto: 10400000,
-    ultimaActualizacion: "2026-05-27",
-  },
-];
-
 export function getTrabajosBase() {
-  return TRABAJOS_BASE;
+  return apiGet("/trabajos");
 }
 
-function generarTrabajoId() {
-  const last = TRABAJOS_BASE[TRABAJOS_BASE.length - 1];
-  const nextNumber = last ? Number(last.id.split("-")[1]) + 1 : 1;
-  return `TR-${String(nextNumber).padStart(3, "0")}`;
-}
-
-export function getTrabajosResumen(trabajos = TRABAJOS_BASE) {
+export function getTrabajosResumen(trabajos = []) {
   const enCurso = trabajos.filter(
     (trabajo) => trabajo.estado === "enCurso",
   ).length;
@@ -127,34 +64,16 @@ export function obtenerVarianteTrabajoEstado(estado) {
 }
 
 export function createTrabajo(trabajo) {
-  const nuevoTrabajo = {
-    ...trabajo,
-    id: generarTrabajoId(),
-  };
-
-  TRABAJOS_BASE = [...TRABAJOS_BASE, nuevoTrabajo];
-  return nuevoTrabajo;
+  return apiPost("/trabajos", trabajo);
 }
 
 export function updateTrabajo(trabajoId, patch) {
-  let updatedTrabajo = null;
-
-  TRABAJOS_BASE = TRABAJOS_BASE.map((trabajo) => {
-    if (trabajo.id !== trabajoId) {
-      return trabajo;
-    }
-
-    updatedTrabajo = { ...trabajo, ...patch, id: trabajo.id };
-    return updatedTrabajo;
-  });
-
-  return updatedTrabajo;
+  return apiPatch(`/trabajos/${trabajoId}`, patch);
 }
 
-export function deleteTrabajo(trabajoId) {
-  const exists = TRABAJOS_BASE.some((trabajo) => trabajo.id === trabajoId);
-  TRABAJOS_BASE = TRABAJOS_BASE.filter((trabajo) => trabajo.id !== trabajoId);
-  return exists;
+export async function deleteTrabajo(trabajoId) {
+  await apiDelete(`/trabajos/${trabajoId}`);
+  return true;
 }
 
 export { TRABAJOS_STATUS, formatCurrency };
