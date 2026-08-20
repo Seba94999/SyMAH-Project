@@ -15,7 +15,7 @@ const presupuestosStore = createInMemoryCollection({
       estado: "aprobado",
       fecha: "2026-05-22",
       monto: 18500000,
-      probabilidad: 92,
+      clienteRegistrado: true,
       trabajoVinculado: "TR-001",
     },
     {
@@ -25,7 +25,7 @@ const presupuestosStore = createInMemoryCollection({
       estado: "pendiente",
       fecha: "2026-05-24",
       monto: 9200000,
-      probabilidad: 63,
+      clienteRegistrado: true,
       trabajoVinculado: null,
     },
   ],

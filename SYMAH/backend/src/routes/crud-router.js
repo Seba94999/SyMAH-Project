@@ -1,45 +1,55 @@
 const express = require("express");
 
-function createCrudRouter(repository, options = {}) {
+function createCrudRouter(service, options = {}) {
   const router = express.Router();
   const listResolver = options.listResolver;
 
-  router.get("/", (req, res) => {
-    if (typeof listResolver === "function") {
-      res.json(listResolver(req));
-      return;
-    }
-
-    res.json(repository.findAll());
-  });
-
-  router.get("/:id", (req, res) => {
-    const item = repository.findById(req.params.id);
-
-    if (!item) {
-      res.status(404).json({ message: "Resource not found" });
-      return;
-    }
-
-    res.json(item);
-  });
-
-  router.post("/", (req, res, next) => {
+  router.get("/", async (req, res, next) => {
     try {
-      const created = repository.create(req.body || {});
+      if (typeof listResolver === "function") {
+        return res.json(await listResolver(req));
+      }
+
+      res.json(await service.getAll());
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get("/:id", async (req, res, next) => {
+    try {
+      const item = await service.getById(req.params.id);
+
+      if (!item) {
+        return res.status(404).json({
+          message: "Resource not found",
+        });
+      }
+
+      res.json(item);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/", async (req, res, next) => {
+    try {
+      const created = await service.create(req.body || {});
+
       res.status(201).json(created);
     } catch (error) {
       next(error);
     }
   });
 
-  router.patch("/:id", (req, res, next) => {
+  router.patch("/:id", async (req, res, next) => {
     try {
-      const updated = repository.update(req.params.id, req.body || {});
+      const updated = await service.update(req.params.id, req.body || {});
 
       if (!updated) {
-        res.status(404).json({ message: "Resource not found" });
-        return;
+        return res.status(404).json({
+          message: "Resource not found",
+        });
       }
 
       res.json(updated);
@@ -48,18 +58,25 @@ function createCrudRouter(repository, options = {}) {
     }
   });
 
-  router.delete("/:id", (req, res) => {
-    const deleted = repository.delete(req.params.id);
+  router.delete("/:id", async (req, res, next) => {
+    try {
+      const deleted = await service.delete(req.params.id);
 
-    if (!deleted) {
-      res.status(404).json({ message: "Resource not found" });
-      return;
+      if (!deleted) {
+        return res.status(404).json({
+          message: "Resource not found",
+        });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      next(error);
     }
-
-    res.status(204).send();
   });
 
   return router;
 }
 
-module.exports = { createCrudRouter };
+module.exports = {
+  createCrudRouter,
+};

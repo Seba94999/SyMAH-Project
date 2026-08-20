@@ -1,60 +1,90 @@
-const {
-  createInMemoryCollection,
-} = require("../../../shared/database/in-memory-store");
-const { createCliente } = require("../entities/cliente.entity");
-
-const clientesStore = createInMemoryCollection({
-  collectionName: "clientes",
-  idPrefix: "CL",
-  hydrate: createCliente,
-  initialData: [
-    {
-      id: "CL-001",
-      nombre: "Constructora Valle Azul",
-      rubro: "Construccion",
-      ciudad: "Santiago",
-      estado: "activo",
-      contacto: "Mariana Soto",
-      correo: "mariana.soto@valleazul.cl",
-      telefono: "+56 9 4567 8890",
-      ultimoTrabajo: "Mantencion de estructura norte",
-      balancePendiente: 1850000,
-    },
-    {
-      id: "CL-002",
-      nombre: "Logistica Ruta Sur",
-      rubro: "Logistica",
-      ciudad: "Concepcion",
-      estado: "enRiesgo",
-      contacto: "Luis Barrera",
-      correo: "lbarrera@rutasur.cl",
-      telefono: "+56 9 3344 9900",
-      ultimoTrabajo: "Revision de patio de carga",
-      balancePendiente: 3290000,
-    },
-  ],
-});
+const { ClienteModel } = require("../persistence/cliente.schema");
+const { toDomain, toPersistence } = require("../persistence/cliente.mapper");
+const { generateCode } = require("../../../shared/persistence/code-generator");
 
 class ClientesRepository {
-  findAll() {
-    return clientesStore.list();
+  async findAll() {
+    const documents = await ClienteModel.find();
+
+    return documents.map(toDomain);
   }
 
-  findById(clienteId) {
-    return clientesStore.getById(clienteId);
+  async findById(codigo) {
+    const document = await ClienteModel.findOne({ codigo });
+
+    return toDomain(document);
   }
 
-  create(payload) {
-    return clientesStore.create(payload);
+  async create(payload) {
+    const codigo = await generateCode(ClienteModel, "CL");
+
+    const document = new ClienteModel(
+      toPersistence({
+        ...payload,
+        id: codigo,
+      }),
+    );
+
+    await document.save();
+
+    return toDomain(document);
   }
 
-  update(clienteId, patch) {
-    return clientesStore.update(clienteId, patch);
+  async update(codigo, patch) {
+    const document = await ClienteModel.findOne({ codigo });
+
+    if (!document) {
+      return null;
+    }
+
+    if (patch.nombre !== undefined) {
+      document.nombre = patch.nombre;
+    }
+
+    if (patch.rubro !== undefined) {
+      document.rubro = patch.rubro;
+    }
+
+    if (patch.direccion !== undefined) {
+      document.direccion = patch.direccion;
+    }
+
+    if (patch.estado !== undefined) {
+      document.estado = patch.estado;
+    }
+
+    if (patch.contacto !== undefined) {
+      document.contacto = patch.contacto;
+    }
+
+    if (patch.correo !== undefined) {
+      document.correo = patch.correo;
+    }
+
+    if (patch.telefono !== undefined) {
+      document.telefono = patch.telefono;
+    }
+
+    if (patch.ultimoTrabajo !== undefined) {
+      document.ultimoTrabajo = patch.ultimoTrabajo;
+    }
+
+    if (patch.balancePendiente !== undefined) {
+      document.balancePendiente = patch.balancePendiente;
+    }
+
+    await document.save();
+
+    return toDomain(document);
   }
 
-  delete(clienteId) {
-    return clientesStore.remove(clienteId);
+  async delete(codigo) {
+    const deleted = await ClienteModel.findOneAndDelete({ codigo });
+
+    return !!deleted;
   }
 }
 
-module.exports = { clientesRepository: new ClientesRepository() };
+module.exports = {
+  clientesRepository: new ClientesRepository(),
+};

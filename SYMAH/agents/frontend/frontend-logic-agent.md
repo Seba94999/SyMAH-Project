@@ -8,6 +8,8 @@ Gestionar toda la lógica funcional y operativa del frontend basada en:
 - Reglas de Negocio (RN)
 - Requerimientos No Funcionales (RNF)
 
+Implementar el comportamiento funcional del frontend traduciendo las reglas del dominio en validaciones, estados, restricciones operativas y flujos de interacción, manteniendo sincronización con el backend y respetando la arquitectura del proyecto.
+
 Este agente transforma la lógica del negocio en:
 
 - validaciones frontend,
@@ -285,6 +287,15 @@ El frontend debe:
 - bloquear conversiones inválidas,
 - renderizar acciones según estado,
 - mostrar estado visual.
+
+Además debe:
+
+- mostrar una lista desplegable de clientes registrados al crear o editar,
+- permitir ingresar manualmente un cliente nuevo cuando no exista en la lista,
+- marcar el presupuesto con registro de cliente pendiente cuando se ingrese un nombre manual,
+- permitir cargar el archivo PDF del presupuesto al crear o editar,
+- habilitar la consulta del PDF desde la ficha del presupuesto,
+- mostrar un mensaje claro cuando el archivo no esté cargado.
 
 ---
 

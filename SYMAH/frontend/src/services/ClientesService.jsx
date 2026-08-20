@@ -43,7 +43,7 @@ export function filtrarClientes(
       termino.length === 0 ||
       cliente.nombre.toLowerCase().includes(termino) ||
       cliente.id.toLowerCase().includes(termino) ||
-      cliente.ciudad.toLowerCase().includes(termino) ||
+      cliente.direccion.toLowerCase().includes(termino) ||
       cliente.contacto.toLowerCase().includes(termino);
 
     return coincideEstado && coincideBusqueda;

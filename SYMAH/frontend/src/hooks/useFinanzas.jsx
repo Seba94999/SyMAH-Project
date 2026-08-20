@@ -1,15 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  createMovimiento,
-  deleteMovimiento,
+  createTransaccion,
+  deleteTransaccion,
   filtrarMovimientos,
-  getFinanzasMovimientos,
+  getTransacciones,
   getFinanzasResumen,
-  updateMovimiento,
+  updateTransaccion,
 } from "../services/FinanzasService.jsx";
 
+const TRABAJOS_SYNC_EVENT = "symah:trabajos-sync";
+const TRANSACCIONES_SYNC_EVENT = "symah:transacciones-sync";
+
+function notifyTrabajosChanged() {
+  window.dispatchEvent(new CustomEvent(TRABAJOS_SYNC_EVENT));
+}
+
+function notifyTransaccionesChanged() {
+  window.dispatchEvent(new CustomEvent(TRANSACCIONES_SYNC_EVENT));
+}
+
 export default function useFinanzas() {
-  const [movimientos, setMovimientos] = useState([]);
+  const [transacciones, setTransacciones] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("todos");
   const [loading, setLoading] = useState(false);
@@ -20,8 +31,8 @@ export default function useFinanzas() {
     setError(null);
 
     try {
-      const data = await getFinanzasMovimientos();
-      setMovimientos(data);
+      const data = await getTransacciones();
+      setTransacciones(data);
     } catch (loadError) {
       setError(loadError);
     } finally {
@@ -33,20 +44,25 @@ export default function useFinanzas() {
     load();
   }, [load]);
 
-  const movimientosFiltrados = useMemo(
-    () => filtrarMovimientos(movimientos, { busqueda, filtroTipo }),
-    [movimientos, busqueda, filtroTipo],
+  const transaccionesFiltradas = useMemo(
+    () => filtrarMovimientos(transacciones, { busqueda, filtroTipo }),
+    [transacciones, busqueda, filtroTipo],
   );
 
-  const resumen = useMemo(() => getFinanzasResumen(movimientos), [movimientos]);
+  const resumen = useMemo(
+    () => getFinanzasResumen(transacciones),
+    [transacciones],
+  );
 
   const create = useCallback(async (payload) => {
     setLoading(true);
     setError(null);
 
     try {
-      const created = await createMovimiento(payload);
-      setMovimientos((current) => [...current, created]);
+      const created = await createTransaccion(payload);
+      setTransacciones((current) => [...current, created]);
+      notifyTransaccionesChanged();
+      notifyTrabajosChanged();
       return created;
     } catch (createError) {
       setError(createError);
@@ -56,17 +72,19 @@ export default function useFinanzas() {
     }
   }, []);
 
-  const update = useCallback(async (movimientoId, patch) => {
+  const update = useCallback(async (transaccionId, patch) => {
     setLoading(true);
     setError(null);
 
     try {
-      const updated = await updateMovimiento(movimientoId, patch);
-      setMovimientos((current) =>
-        current.map((movimiento) =>
-          movimiento.id === movimientoId ? updated : movimiento,
+      const updated = await updateTransaccion(transaccionId, patch);
+      setTransacciones((current) =>
+        current.map((transaccion) =>
+          transaccion.id === transaccionId ? updated : transaccion,
         ),
       );
+      notifyTransaccionesChanged();
+      notifyTrabajosChanged();
       return updated;
     } catch (updateError) {
       setError(updateError);
@@ -76,15 +94,17 @@ export default function useFinanzas() {
     }
   }, []);
 
-  const remove = useCallback(async (movimientoId) => {
+  const remove = useCallback(async (transaccionId) => {
     setLoading(true);
     setError(null);
 
     try {
-      await deleteMovimiento(movimientoId);
-      setMovimientos((current) =>
-        current.filter((movimiento) => movimiento.id !== movimientoId),
+      await deleteTransaccion(transaccionId);
+      setTransacciones((current) =>
+        current.filter((transaccion) => transaccion.id !== transaccionId),
       );
+      notifyTransaccionesChanged();
+      notifyTrabajosChanged();
       return true;
     } catch (deleteError) {
       setError(deleteError);
@@ -98,8 +118,11 @@ export default function useFinanzas() {
     loading,
     error,
     reload: load,
-    movimientos,
-    movimientosFiltrados,
+    transacciones,
+    transaccionesFiltradas,
+    movimientos: transacciones,
+    movimientosFiltrados: transaccionesFiltradas,
+    transaccionesResumen: resumen,
     resumen,
     busqueda,
     setBusqueda,

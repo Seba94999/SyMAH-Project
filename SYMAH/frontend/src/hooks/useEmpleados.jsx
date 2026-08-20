@@ -47,8 +47,10 @@ export default function useEmpleados() {
     try {
       const created = await createEmpleado(payload);
       setEmpleados((current) => [...current, created]);
+      console.log("BODY RECIBIDO:", payload);
       return created;
     } catch (createError) {
+      console.log("BODY RECIBIDO:", payload);
       setError(createError);
       return null;
     } finally {

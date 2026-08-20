@@ -19,11 +19,16 @@ import {
 import ConfirmModal from "../../components/modals/ConfirmModal.jsx";
 import TrabajoFormModal from "../../components/modals/TrabajoFormModal.jsx";
 import useTrabajos from "../../hooks/useTrabajos.jsx";
+import ErrorModal from "../../components/modals/ErrorModal.jsx";
 
 const COLUMNAS_TRABAJOS = [
   { key: "id", label: "ID" },
   { key: "nombre", label: "Trabajo" },
-  { key: "cliente", label: "Cliente" },
+  {
+    key: "cliente",
+    label: "Cliente",
+    render: (trabajo) => trabajo.cliente || trabajo.clienteId,
+  },
   {
     key: "estado",
     label: "Estado",
@@ -33,16 +38,24 @@ const COLUMNAS_TRABAJOS = [
       </Badge>
     ),
   },
-  {
-    key: "progreso",
-    label: "Progreso",
-    render: (trabajo) => `${trabajo.progreso}%`,
-  },
+
   {
     key: "monto",
     label: "Monto",
     align: "right",
     render: (trabajo) => formatCurrency(trabajo.monto),
+  },
+  {
+    key: "gastoManoObra",
+    label: "Mano de obra",
+    align: "right",
+    render: (trabajo) => formatCurrency(trabajo.gastoManoObra || 0),
+  },
+  {
+    key: "cobrado",
+    label: "Cobrado",
+    align: "right",
+    render: (trabajo) => formatCurrency(trabajo.cobrado || 0),
   },
 ];
 
@@ -59,6 +72,8 @@ export default function TrabajosPage() {
     create,
     update,
     remove,
+    error: trabajosError,
+    reload: reloadTrabajos,
   } = useTrabajos();
 
   const [trabajoSeleccionadoId, setTrabajoSeleccionadoId] = useState(null);
@@ -175,6 +190,16 @@ export default function TrabajosPage() {
             value={resumen.cancelados}
             variant="danger"
           />
+          <SummaryCard
+            title="Mano de obra"
+            value={formatCurrency(resumen.gastoManoObra)}
+            variant="warning"
+          />
+          <SummaryCard
+            title="Cobrado"
+            value={formatCurrency(resumen.cobrado)}
+            variant="success"
+          />
         </MetricsGrid>
 
         <section className="sy-grid sy-grid--sidebar">
@@ -287,17 +312,40 @@ export default function TrabajosPage() {
                   {trabajoSeleccionado.nombre}
                 </h2>
                 <p>
-                  <strong>Cliente:</strong> {trabajoSeleccionado.cliente}
+                  <strong>Cliente:</strong>{" "}
+                  {trabajoSeleccionado.cliente || trabajoSeleccionado.clienteId}
                 </p>
                 <p>
                   <strong>Responsable:</strong>{" "}
-                  {trabajoSeleccionado.responsable}
+                  {trabajoSeleccionado.responsableId}
                 </p>
                 <p>
                   <strong>Prioridad:</strong> {trabajoSeleccionado.prioridad}
                 </p>
+
                 <p>
-                  <strong>Progreso:</strong> {trabajoSeleccionado.progreso}%
+                  <strong>Monto:</strong>{" "}
+                  {formatCurrency(trabajoSeleccionado.monto || 0)}
+                </p>
+                <p>
+                  <strong>Gasto mano de obra:</strong>{" "}
+                  {formatCurrency(trabajoSeleccionado.gastoManoObra || 0)}
+                </p>
+                <p>
+                  <strong>Cobrado:</strong>{" "}
+                  {formatCurrency(trabajoSeleccionado.cobrado || 0)}
+                </p>
+                <p>
+                  <strong>Saldo por cobrar:</strong>{" "}
+                  {formatCurrency(trabajoSeleccionado.saldoPorCobrar || 0)}
+                </p>
+                <p>
+                  <strong>Jornadas vinculadas:</strong>{" "}
+                  {trabajoSeleccionado.trazabilidad?.totalJornadas || 0}
+                </p>
+                <p>
+                  <strong>Transacciones de cobro:</strong>{" "}
+                  {trabajoSeleccionado.trazabilidad?.totalMovimientosCobro || 0}
                 </p>
                 <p>
                   <strong>Última actualización:</strong>{" "}
@@ -337,6 +385,9 @@ export default function TrabajosPage() {
           setEditingTrabajo(null);
         }}
         onSubmit={async (payload) => {
+          console.log("PAYLOAD RECIBIDO:", payload);
+          console.log("EDITING:", editingTrabajo);
+          console.log("ID:", editingTrabajo?.id);
           if (editingTrabajo) {
             await update(editingTrabajo.id, payload);
             setTrabajoSeleccionadoId(editingTrabajo.id);
@@ -367,6 +418,12 @@ export default function TrabajosPage() {
           setTrabajoAEliminarId(null);
         }}
         onCancel={() => setOpenConfirm(false)}
+      />
+
+      <ErrorModal
+        open={!!trabajosError}
+        message={trabajosError?.message || String(trabajosError)}
+        onClose={() => reloadTrabajos && reloadTrabajos()}
       />
     </section>
   );

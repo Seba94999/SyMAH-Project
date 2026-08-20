@@ -19,40 +19,55 @@ import {
 import { formatDateShort } from "../../utils/formatters.js";
 import ConfirmModal from "../../components/modals/ConfirmModal.jsx";
 import MovimientoFormModal from "../../components/modals/MovimientoFormModal.jsx";
+import ErrorModal from "../../components/modals/ErrorModal.jsx";
 import useFinanzas from "../../hooks/useFinanzas.jsx";
 
-const COLUMNAS_MOVIMIENTOS = [
+const COLUMNAS_TRANSACCIONES = [
   { key: "id", label: "ID" },
   { key: "concepto", label: "Concepto" },
   {
     key: "tipo",
     label: "Tipo",
-    render: (movimiento) => (
-      <Badge variant={obtenerVarianteMovimientoTipo(movimiento.tipo)}>
-        {movimiento.tipo}
+    render: (transaccion) => (
+      <Badge variant={obtenerVarianteMovimientoTipo(transaccion.tipo)}>
+        {transaccion.tipo}
       </Badge>
     ),
   },
-  { key: "referencia", label: "Referencia" },
+  {
+    key: "origen",
+    label: "Origen",
+    render: (transaccion) =>
+      transaccion.entidadOrigenId ||
+      transaccion.referencia ||
+      transaccion.entidadOrigen ||
+      "-",
+  },
+  {
+    key: "destino",
+    label: "Destino",
+    render: (transaccion) =>
+      transaccion.entidadDestinoId || transaccion.entidadDestino || "-",
+  },
   {
     key: "fecha",
     label: "Fecha",
-    render: (movimiento) => formatDateShort(movimiento.fecha),
+    render: (transaccion) => formatDateShort(transaccion.fecha),
   },
   {
     key: "monto",
     label: "Monto",
     align: "right",
-    render: (movimiento) => formatCurrency(movimiento.monto),
+    render: (transaccion) => formatCurrency(transaccion.monto),
   },
 ];
 
 export default function FinanzasPage() {
   const {
     loading,
-    movimientos,
-    movimientosFiltrados,
-    resumen,
+    transacciones,
+    transaccionesFiltradas,
+    transaccionesResumen,
     busqueda,
     setBusqueda,
     filtroTipo,
@@ -60,30 +75,32 @@ export default function FinanzasPage() {
     create,
     update,
     remove,
+    error: finanzasError,
+    reload: reloadFinanzas,
   } = useFinanzas();
 
-  const [movimientoSeleccionadoId, setMovimientoSeleccionadoId] =
+  const [transaccionSeleccionadaId, setTransaccionSeleccionadaId] =
     useState("FN-001");
   const [openForm, setOpenForm] = useState(false);
-  const [editingMovimiento, setEditingMovimiento] = useState(null);
+  const [editingTransaccion, setEditingTransaccion] = useState(null);
   const [openConfirm, setOpenConfirm] = useState(false);
-  const [movimientoAEliminarId, setMovimientoAEliminarId] = useState(null);
+  const [transaccionAEliminarId, setTransaccionAEliminarId] = useState(null);
   const modalOpen = openForm || openConfirm;
 
-  const movimientoSeleccionado =
-    movimientosFiltrados.find(
-      (movimiento) => movimiento.id === movimientoSeleccionadoId,
+  const transaccionSeleccionada =
+    transaccionesFiltradas.find(
+      (transaccion) => transaccion.id === transaccionSeleccionadaId,
     ) ||
-    movimientosFiltrados[0] ||
+    transaccionesFiltradas[0] ||
     null;
   const [filtroMes, setFiltroMes] = useState("todos");
   const [filtroAnno, setFiltroAnno] = useState("todos");
 
-  const movimientosPeriodo = useMemo(() => {
+  const transaccionesPeriodo = useMemo(() => {
     if (filtroMes === "todos" && filtroAnno === "todos")
-      return movimientosFiltrados;
+      return transaccionesFiltradas;
 
-    return movimientosFiltrados.filter((m) => {
+    return transaccionesFiltradas.filter((m) => {
       const fecha = new Date(m.fecha);
       const mes = String(fecha.getMonth() + 1).padStart(2, "0");
       const anno = String(fecha.getFullYear());
@@ -92,7 +109,7 @@ export default function FinanzasPage() {
       const okAnno = filtroAnno === "todos" || filtroAnno === anno;
       return okMes && okAnno;
     });
-  }, [movimientosFiltrados, filtroMes, filtroAnno]);
+  }, [transaccionesFiltradas, filtroMes, filtroAnno]);
 
   const colorPorTipo = {
     ingreso: "#16A34A",
@@ -104,11 +121,11 @@ export default function FinanzasPage() {
   const finanzasPorTipo = useMemo(
     () =>
       Object.entries(FINANZAS_TIPOS).map(([tipo, label]) => {
-        const movimientosTipo = movimientos.filter(
-          (movimiento) => movimiento.tipo === tipo,
+        const transaccionesTipo = transacciones.filter(
+          (transaccion) => transaccion.tipo === tipo,
         );
-        const montoTotal = movimientosTipo.reduce(
-          (total, movimiento) => total + movimiento.monto,
+        const montoTotal = transaccionesTipo.reduce(
+          (total, transaccion) => total + transaccion.monto,
           0,
         );
 
@@ -119,14 +136,14 @@ export default function FinanzasPage() {
           color: colorPorTipo[tipo] || "#64748B",
         };
       }),
-    [movimientos],
+    [transacciones],
   );
 
   const finanzasPorTipoConteo = useMemo(
     () =>
       Object.entries(FINANZAS_TIPOS).map(([tipo, label]) => {
-        const cantidad = movimientos.filter(
-          (movimiento) => movimiento.tipo === tipo,
+        const cantidad = transacciones.filter(
+          (transaccion) => transaccion.tipo === tipo,
         ).length;
 
         return {
@@ -136,7 +153,7 @@ export default function FinanzasPage() {
           color: colorPorTipo[tipo] || "#64748B",
         };
       }),
-    [movimientos],
+    [transacciones],
   );
 
   const filtrosTipo = [
@@ -151,10 +168,10 @@ export default function FinanzasPage() {
     <section className="sy-page">
       <header className="sy-page__header">
         <p className="sy-page__eyebrow">Tesorería</p>
-        <h1 className="sy-page__title">Finanzas</h1>
+        <h1 className="sy-page__title">Transacciones</h1>
         <p className="sy-page__description">
-          Revisa el flujo de ingresos, gastos y movimientos recientes para
-          mantener el balance operativo.
+          Revisa el historial financiero del sistema y sigue el rastro de cada
+          ingreso, gasto, pago o cobro.
         </p>
       </header>
 
@@ -164,22 +181,22 @@ export default function FinanzasPage() {
         <MetricsGrid>
           <SummaryCard
             title="Ingresos"
-            value={formatCurrency(resumen.ingresos)}
+            value={formatCurrency(transaccionesResumen.ingresos)}
             variant="success"
           />
           <SummaryCard
             title="Gastos"
-            value={formatCurrency(resumen.gastos)}
+            value={formatCurrency(transaccionesResumen.gastos)}
             variant="danger"
           />
           <SummaryCard
             title="Neto"
-            value={formatCurrency(resumen.neto)}
+            value={formatCurrency(transaccionesResumen.neto)}
             variant="primary"
           />
           <SummaryCard
-            title="Movimientos"
-            value={resumen.totalMovimientos}
+            title="Transacciones"
+            value={transaccionesResumen.totalMovimientos}
             variant="warning"
           />
         </MetricsGrid>
@@ -232,51 +249,51 @@ export default function FinanzasPage() {
           <Card className="sy-section">
             <header className="sy-section__header">
               <strong className="sy-section__title">
-                Movimientos financieros
+                Transacciones financieras
               </strong>
               <Button
                 variant="primary"
                 onClick={() => {
-                  setEditingMovimiento(null);
+                  setEditingTransaccion(null);
                   setOpenForm(true);
                 }}
                 iconLeft={<PlusIcon />}
               >
-                Nuevo movimiento
+                Nueva transacción
               </Button>
             </header>
 
             <DataTable
-              columns={COLUMNAS_MOVIMIENTOS}
-              data={movimientosPeriodo}
+              columns={COLUMNAS_TRANSACCIONES}
+              data={transaccionesPeriodo}
               loading={loading}
-              selectedRowId={movimientoSeleccionado?.id}
-              onRowClick={(movimiento) =>
-                setMovimientoSeleccionadoId(movimiento.id)
+              selectedRowId={transaccionSeleccionada?.id}
+              onRowClick={(transaccion) =>
+                setTransaccionSeleccionadaId(transaccion.id)
               }
-              emptyTitle="Sin movimientos coincidentes"
-              emptyDescription="No hay movimientos que coincidan con la búsqueda y filtro aplicados."
-              renderRowActions={(movimiento) => (
+              emptyTitle="Sin transacciones coincidentes"
+              emptyDescription="No hay transacciones que coincidan con la búsqueda y filtro aplicados."
+              renderRowActions={(transaccion) => (
                 <div style={{ display: "flex", gap: 8 }}>
                   <Button
                     variant="secondary"
                     onClick={() => {
-                      setMovimientoSeleccionadoId(movimiento.id);
-                      setEditingMovimiento(movimiento);
+                      setTransaccionSeleccionadaId(transaccion.id);
+                      setEditingTransaccion(transaccion);
                       setOpenForm(true);
                     }}
                     iconLeft={<PencilIcon />}
-                    ariaLabel={`Editar movimiento ${movimiento.id}`}
+                    ariaLabel={`Editar transacción ${transaccion.id}`}
                   ></Button>
                   <Button
                     variant="danger"
                     onClick={() => {
-                      setMovimientoSeleccionadoId(movimiento.id);
-                      setMovimientoAEliminarId(movimiento.id);
+                      setTransaccionSeleccionadaId(transaccion.id);
+                      setTransaccionAEliminarId(transaccion.id);
                       setOpenConfirm(true);
                     }}
                     iconLeft={<TrashIcon />}
-                    ariaLabel={`Eliminar movimiento ${movimiento.id}`}
+                    ariaLabel={`Eliminar transacción ${transaccion.id}`}
                   ></Button>
                 </div>
               )}
@@ -285,44 +302,61 @@ export default function FinanzasPage() {
 
           <Card className="sy-section">
             <strong className="sy-section__title">
-              Detalle del movimiento
+              Detalle de la transacción
             </strong>
 
-            {movimientoSeleccionado ? (
+            {transaccionSeleccionada ? (
               <div className="clientes-detalle__body">
                 <h2 className="sy-detail-title">
-                  {movimientoSeleccionado.concepto}
+                  {transaccionSeleccionada.concepto}
                 </h2>
                 <p>
                   <strong>Tipo:</strong>{" "}
-                  {FINANZAS_TIPOS[movimientoSeleccionado.tipo] ||
-                    movimientoSeleccionado.tipo}
+                  {FINANZAS_TIPOS[transaccionSeleccionada.tipo] ||
+                    transaccionSeleccionada.tipo}
                 </p>
                 <p>
                   <strong>Referencia:</strong>{" "}
-                  {movimientoSeleccionado.referencia}
+                  {transaccionSeleccionada.referencia}
+                </p>
+                <p>
+                  <strong>Origen:</strong>{" "}
+                  {transaccionSeleccionada.entidadOrigen || "-"}{" "}
+                  {transaccionSeleccionada.entidadOrigenId ||
+                    transaccionSeleccionada.referencia ||
+                    ""}
+                </p>
+                <p>
+                  <strong>Destino:</strong>{" "}
+                  {transaccionSeleccionada.entidadDestino || "-"}{" "}
+                  {transaccionSeleccionada.entidadDestinoId || ""}
                 </p>
                 <p>
                   <strong>Fecha:</strong>{" "}
-                  {formatDateShort(movimientoSeleccionado.fecha)}
+                  {formatDateShort(transaccionSeleccionada.fecha)}
                 </p>
                 <p>
                   <strong>Monto:</strong>{" "}
-                  {formatCurrency(movimientoSeleccionado.monto)}
+                  {formatCurrency(transaccionSeleccionada.monto)}
+                </p>
+                <p>
+                  <strong>Observaciones:</strong>{" "}
+                  {transaccionSeleccionada.observaciones || "-"}
                 </p>
               </div>
             ) : (
               <EmptyState
-                title="Sin movimiento seleccionado"
-                description="Selecciona un movimiento para ver su detalle."
+                title="Sin transacción seleccionada"
+                description="Selecciona una transacción para ver su detalle."
               />
             )}
           </Card>
         </section>
+
         <section className="dashboard-charts-grid">
           <DonutChart
             title="Flujo por tipo"
-            description="Distribución del monto total por tipo de movimiento."
+            description="Distribución del monto total por tipo de transacción."
             totalLabel="Monto total"
             formatValue={formatCurrency}
             data={finanzasPorTipo}
@@ -330,7 +364,7 @@ export default function FinanzasPage() {
 
           <BarChart
             title="Cantidad por tipo"
-            description="Número de movimientos por tipo, sin aplicar filtros de periodo."
+            description="Número de transacciones por tipo, sin aplicar filtros de periodo."
             data={finanzasPorTipoConteo}
           />
         </section>
@@ -338,45 +372,51 @@ export default function FinanzasPage() {
 
       <MovimientoFormModal
         open={openForm}
-        initial={editingMovimiento}
+        initial={editingTransaccion}
         onClose={() => {
           setOpenForm(false);
-          setEditingMovimiento(null);
+          setEditingTransaccion(null);
         }}
         onSubmit={async (payload) => {
-          if (editingMovimiento) {
-            await update(editingMovimiento.id, payload);
-            setMovimientoSeleccionadoId(editingMovimiento.id);
+          if (editingTransaccion) {
+            await update(editingTransaccion.id, payload);
+            setTransaccionSeleccionadaId(editingTransaccion.id);
           } else {
             const created = await create(payload);
-            setMovimientoSeleccionadoId(created?.id || null);
+            setTransaccionSeleccionadaId(created?.id || null);
           }
 
           setOpenForm(false);
-          setEditingMovimiento(null);
+          setEditingTransaccion(null);
         }}
         submitting={loading}
       />
 
       <ConfirmModal
         open={openConfirm}
-        title="Eliminar movimiento"
-        description="¿Seguro que deseas eliminar este movimiento? Esta acción no se puede deshacer."
+        title="Eliminar transacción"
+        description="¿Seguro que deseas eliminar esta transacción? Esta acción no se puede deshacer."
         confirmLabel="Eliminar"
         cancelLabel="Cancelar"
         confirmVariant="danger"
         loading={loading}
         onConfirm={async () => {
-          if (!movimientoAEliminarId) return;
+          if (!transaccionAEliminarId) return;
 
-          await remove(movimientoAEliminarId);
+          await remove(transaccionAEliminarId);
           setOpenConfirm(false);
-          setMovimientoAEliminarId(null);
-          if (movimientoSeleccionadoId === movimientoAEliminarId) {
-            setMovimientoSeleccionadoId(null);
+          setTransaccionAEliminarId(null);
+          if (transaccionSeleccionadaId === transaccionAEliminarId) {
+            setTransaccionSeleccionadaId(null);
           }
         }}
         onCancel={() => setOpenConfirm(false)}
+      />
+
+      <ErrorModal
+        open={!!finanzasError}
+        message={finanzasError?.message || String(finanzasError)}
+        onClose={() => reloadFinanzas && reloadFinanzas()}
       />
     </section>
   );

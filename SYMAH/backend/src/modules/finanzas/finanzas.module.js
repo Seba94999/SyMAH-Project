@@ -1,7 +1,13 @@
-const { finanzasRepository } = require("./repositories/finanzas.repository");
-const { MOVIMIENTO_TIPOS } = require("./entities/movimiento.entity");
+const { finanzasService } = require("./services/finanzas.service");
+
+const {
+  TRANSACCION_TIPOS,
+  TRANSACCION_ESTADOS,
+} = require("../transacciones/entities/transaccion.entity");
 
 module.exports = {
-  finanzasRepository,
-  MOVIMIENTO_TIPOS,
+  finanzasService,
+  MOVIMIENTO_TIPOS: TRANSACCION_TIPOS,
+  TRANSACCION_TIPOS,
+  TRANSACCION_ESTADOS,
 };

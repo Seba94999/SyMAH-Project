@@ -15,6 +15,8 @@ import {
   UserIcon,
   XIcon,
 } from "../ui/Icon.jsx";
+import useClientes from "../../hooks/useClientes.jsx";
+import useEmpleados from "../../hooks/useEmpleados.jsx";
 
 const ESTADO_OPTIONS = [
   { value: "enCurso", label: "En curso" },
@@ -29,6 +31,32 @@ const PRIORIDAD_OPTIONS = [
   { value: "Baja", label: "Baja" },
 ];
 
+function buildFormState(initial) {
+  return {
+    nombre: initial?.nombre || "",
+
+    clienteId:
+      initial?.clienteId ||
+      initial?.cliente?.id ||
+      initial?.cliente?.codigo ||
+      "",
+
+    responsableId:
+      initial?.responsableId ||
+      initial?.responsable?.id ||
+      initial?.responsable?.codigo ||
+      "",
+
+    estado: initial?.estado || "enCurso",
+
+    prioridad: initial?.prioridad || "Media",
+
+    monto: initial?.monto?.toString() || "0",
+
+    ultimaActualizacion: initial?.ultimaActualizacion || "",
+  };
+}
+
 export default function TrabajoFormModal({
   open,
   initial = null,
@@ -36,40 +64,32 @@ export default function TrabajoFormModal({
   onSubmit,
   submitting = false,
 }) {
-  const [form, setForm] = useState({
-    nombre: initial?.nombre || "",
-    cliente: initial?.cliente || "",
-    responsable: initial?.responsable || "",
-    estado: initial?.estado || "enCurso",
-    prioridad: initial?.prioridad || "Media",
-    progreso: initial?.progreso?.toString() || "0",
-    monto: initial?.monto?.toString() || "0",
-    ultimaActualizacion: initial?.ultimaActualizacion || "",
-  });
+  const [form, setForm] = useState(() => buildFormState(initial));
 
   useEffect(() => {
-    setForm({
-      nombre: initial?.nombre || "",
-      cliente: initial?.cliente || "",
-      responsable: initial?.responsable || "",
-      estado: initial?.estado || "enCurso",
-      prioridad: initial?.prioridad || "Media",
-      progreso: initial?.progreso?.toString() || "0",
-      monto: initial?.monto?.toString() || "0",
-      ultimaActualizacion: initial?.ultimaActualizacion || "",
-    });
+    setForm(buildFormState(initial));
   }, [initial, open]);
 
+  const { clientes = [], loading: clientesLoading } = useClientes();
+
+  const { empleados = [], loading: empleadosLoading } = useEmpleados();
+
   function setField(field, value) {
-    setForm((current) => ({ ...current, [field]: value }));
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
   }
 
   function handleSubmit() {
-    onSubmit({
+    const data = {
       ...form,
-      progreso: Number(form.progreso || 0),
       monto: Number(form.monto || 0),
-    });
+    };
+
+    console.log("FORMULARIO ENVIADO:", data);
+
+    onSubmit(data);
   }
 
   return (
@@ -89,6 +109,7 @@ export default function TrabajoFormModal({
           >
             Cancelar
           </Button>
+
           <Button
             variant="primary"
             loading={submitting}
@@ -107,18 +128,45 @@ export default function TrabajoFormModal({
           value={form.nombre}
           onChange={(event) => setField("nombre", event.target.value)}
         />
-        <TextField
+
+        <SelectField
           label="Cliente"
-          iconLeft={<UserIcon />}
-          value={form.cliente}
-          onChange={(event) => setField("cliente", event.target.value)}
-        />
-        <TextField
+          iconLeft={<BuildingIcon />}
+          value={form.clienteId}
+          onChange={(event) => setField("clienteId", event.target.value)}
+          disabled={clientesLoading}
+        >
+          <option value="">
+            {clientesLoading ? "Cargando clientes..." : "Seleccionar cliente"}
+          </option>
+
+          {clientes.map((cliente) => (
+            <option key={cliente.id} value={cliente.id}>
+              {`${cliente.nombre} — ${cliente.id}`}
+            </option>
+          ))}
+        </SelectField>
+
+        <SelectField
           label="Responsable"
           iconLeft={<UserIcon />}
-          value={form.responsable}
-          onChange={(event) => setField("responsable", event.target.value)}
-        />
+          value={form.responsableId}
+          onChange={(event) => setField("responsableId", event.target.value)}
+          disabled={empleadosLoading}
+        >
+          <option value="">
+            {empleadosLoading
+              ? "Cargando responsables..."
+              : "Seleccionar responsable"}
+          </option>
+
+          {empleados.map((empleado) => (
+            <option key={empleado.id} value={empleado.id}>
+              {`${empleado.nombre} — ${empleado.id}`}
+            </option>
+          ))}
+        </SelectField>
+
         <div className="sy-form-grid sy-form-grid--2">
           <SelectField
             label="Estado"
@@ -132,6 +180,7 @@ export default function TrabajoFormModal({
               </option>
             ))}
           </SelectField>
+
           <SelectField
             label="Prioridad"
             iconLeft={<TagIcon />}
@@ -145,16 +194,8 @@ export default function TrabajoFormModal({
             ))}
           </SelectField>
         </div>
+
         <div className="sy-form-grid sy-form-grid--2">
-          <TextField
-            label="Progreso (%)"
-            type="number"
-            min="0"
-            max="100"
-            iconLeft={<PercentIcon />}
-            value={form.progreso}
-            onChange={(event) => setField("progreso", event.target.value)}
-          />
           <TextField
             label="Monto"
             type="number"
@@ -163,6 +204,7 @@ export default function TrabajoFormModal({
             onChange={(event) => setField("monto", event.target.value)}
           />
         </div>
+
         <TextField
           label="Última actualización"
           type="date"

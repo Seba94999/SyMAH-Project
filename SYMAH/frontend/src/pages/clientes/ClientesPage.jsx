@@ -16,12 +16,13 @@ import { SummaryCard } from "../../components/Dashboard.jsx";
 import { DataTable, TableFilters } from "../../components/Tables.jsx";
 import ConfirmModal from "../../components/modals/ConfirmModal.jsx";
 import ClienteFormModal from "../../components/modals/ClienteFormModal.jsx";
+import ErrorModal from "../../components/modals/ErrorModal.jsx";
 import useClientes from "../../hooks/useClientes.jsx";
 
 const COLUMNAS_CLIENTES = [
   { key: "id", label: "ID" },
   { key: "nombre", label: "Cliente", render: (cliente) => cliente.nombre },
-  { key: "ciudad", label: "Ciudad" },
+  { key: "direccion", label: "direccion" },
   {
     key: "estado",
     label: "Estado",
@@ -63,6 +64,8 @@ export default function ClientesPage() {
     create,
     update,
     remove,
+    error,
+    reload,
   } = useClientes();
 
   const [clienteSeleccionadoId, setClienteSeleccionadoId] = useState(null);
@@ -90,7 +93,8 @@ export default function ClientesPage() {
         <h1 className="clientes-page__title sy-page__title">Clientes</h1>
         <p className="clientes-page__description sy-page__description">
           Gestiona la cartera comercial, identifica cuentas en riesgo y revisa
-          rapidamente la informacion clave de cada cliente.
+          rapidamente la informacion clave y el historial operativo de cada
+          cliente.
         </p>
       </header>
 
@@ -139,7 +143,7 @@ export default function ClientesPage() {
             <TableFilters
               searchValue={busqueda}
               onSearchChange={setBusqueda}
-              searchPlaceholder="Buscar por nombre, ID o contacto"
+              searchPlaceholder="Buscar por nombre o ID"
               filterValue={filtroEstado}
               onFilterChange={setFiltroEstado}
               filterOptions={filtrosEstado}
@@ -188,14 +192,8 @@ export default function ClientesPage() {
                 <h2 className="clientes-detalle__title sy-page__title clientes-detalle__title--compact">
                   {clienteSeleccionado.nombre}
                 </h2>
-                <p className="clientes-detalle__rubro">
-                  {clienteSeleccionado.rubro}
-                </p>
 
                 <div className="clientes-detalle__body">
-                  <p>
-                    <strong>Contacto:</strong> {clienteSeleccionado.contacto}
-                  </p>
                   <p>
                     <strong>Correo:</strong> {clienteSeleccionado.correo}
                   </p>
@@ -209,6 +207,11 @@ export default function ClientesPage() {
                   <p>
                     <strong>Saldo pendiente:</strong>{" "}
                     {formatearMoneda(clienteSeleccionado.balancePendiente)}
+                  </p>
+                  <p>
+                    <strong>Estado comercial:</strong> Este cliente puede
+                    concentrar presupuestos, trabajos y transacciones
+                    vinculadas.
                   </p>
                 </div>
               </>
@@ -242,6 +245,12 @@ export default function ClientesPage() {
           setEditingCliente(null);
         }}
         submitting={loading}
+      />
+
+      <ErrorModal
+        open={!!error}
+        message={error?.message || String(error)}
+        onClose={() => reload && reload()}
       />
 
       <ConfirmModal

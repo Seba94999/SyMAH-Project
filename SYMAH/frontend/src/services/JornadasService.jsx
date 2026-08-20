@@ -1,15 +1,44 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "./apiClient.js";
 
+function normalizarJornada(jornada) {
+  if (!jornada) {
+    return jornada;
+  }
+
+  const trabajoId =
+    jornada.trabajoId ||
+    jornada.trabajo?.id ||
+    jornada.trabajo?.codigo ||
+    jornada.trabajo?._id ||
+    jornada.trabajo ||
+    "";
+
+  const duracionHoras = jornada.duracionHoras ?? jornada.horas ?? 0;
+
+  return {
+    ...jornada,
+    trabajoId,
+    duracionHoras,
+    horas: jornada.horas ?? duracionHoras,
+  };
+}
+
 export function getJornadasBase() {
-  return apiGet("/jornadas");
+  return apiGet("/jornadas").then((jornadas) =>
+    jornadas.map(normalizarJornada),
+  );
 }
 
 export function getJornadasByEmpleado(empleadoId) {
-  return apiGet(`/jornadas?empleadoId=${encodeURIComponent(empleadoId)}`);
+  return apiGet(`/jornadas?empleado=${encodeURIComponent(empleadoId)}`).then(
+    (jornadas) => jornadas.map(normalizarJornada),
+  );
 }
 
 export function getJornadasByTrabajo(trabajoId) {
-  return apiGet(`/jornadas?trabajoId=${encodeURIComponent(trabajoId)}`);
+  return apiGet(`/jornadas?trabajo=${encodeURIComponent(trabajoId)}`).then(
+    (jornadas) => jornadas.map(normalizarJornada),
+  );
 }
 
 export function filtrarJornadasPorMesYAnio(
@@ -27,11 +56,17 @@ export function filtrarJornadasPorMesYAnio(
 }
 
 export function createJornada(jornada) {
-  return apiPost("/jornadas", jornada);
+  const payload = {
+    ...jornada,
+    empleadoId: jornada.empleadoId || jornada.empleado,
+    trabajoId: jornada.trabajoId || jornada.trabajo,
+  };
+
+  return apiPost("/jornadas", payload).then(normalizarJornada);
 }
 
 export function updateJornada(id, patch) {
-  return apiPatch(`/jornadas/${id}`, patch);
+  return apiPatch(`/jornadas/${id}`, patch).then(normalizarJornada);
 }
 
 export async function deleteJornada(id) {

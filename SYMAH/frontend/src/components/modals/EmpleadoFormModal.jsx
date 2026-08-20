@@ -36,11 +36,11 @@ export default function EmpleadoFormModal({
   const [form, setForm] = useState({
     nombre: initial?.nombre || "",
     cargo: initial?.cargo || "",
-    sede: initial?.sede || "",
     estado: initial?.estado || "activo",
     jornada: initial?.jornada || "Completa",
-    salario: initial?.salario?.toString() || "",
+    saldo: initial?.saldo?.toString() || "",
     horasMes: initial?.horasMes?.toString() || "",
+    tarifaPorHora: initial?.tarifaPorHora?.toString() || "",
     ultimaActividad: initial?.ultimaActividad || "",
   });
 
@@ -48,11 +48,11 @@ export default function EmpleadoFormModal({
     setForm({
       nombre: initial?.nombre || "",
       cargo: initial?.cargo || "",
-      sede: initial?.sede || "",
       estado: initial?.estado || "activo",
       jornada: initial?.jornada || "Completa",
-      salario: initial?.salario?.toString() || "",
+      saldo: initial?.saldo?.toString() || "",
       horasMes: initial?.horasMes?.toString() || "",
+      tarifaPorHora: initial?.tarifaPorHora?.toString() || "",
       ultimaActividad: initial?.ultimaActividad || "",
     });
   }, [initial, open]);
@@ -64,8 +64,9 @@ export default function EmpleadoFormModal({
   function handleSubmit() {
     onSubmit({
       ...form,
-      salario: Number(form.salario),
+      saldo: Number(form.saldo),
       horasMes: Number(form.horasMes),
+      tarifaPorHora: Number(form.tarifaPorHora),
     });
   }
 
@@ -110,12 +111,7 @@ export default function EmpleadoFormModal({
           value={form.cargo}
           onChange={(event) => setField("cargo", event.target.value)}
         />
-        <TextField
-          label="Sede"
-          iconLeft={<BuildingIcon />}
-          value={form.sede}
-          onChange={(event) => setField("sede", event.target.value)}
-        />
+
         <SelectField
           label="Estado"
           iconLeft={<TagIcon />}
@@ -140,14 +136,15 @@ export default function EmpleadoFormModal({
             </option>
           ))}
         </SelectField>
-        <div className="sy-form-grid sy-form-grid--2">
+        <div className="sy-form-grid sy-form-grid--3">
           <TextField
-            label="Salario"
+            label="saldo"
             type="number"
             iconLeft={<CurrencyIcon />}
-            value={form.salario}
-            onChange={(event) => setField("salario", event.target.value)}
+            value={form.saldo}
+            onChange={(event) => setField("saldo", event.target.value)}
           />
+
           <TextField
             label="Horas mes"
             type="number"
@@ -155,13 +152,15 @@ export default function EmpleadoFormModal({
             value={form.horasMes}
             onChange={(event) => setField("horasMes", event.target.value)}
           />
+
+          <TextField
+            label="Tarifa por hora"
+            type="number"
+            iconLeft={<CurrencyIcon />}
+            value={form.tarifaPorHora}
+            onChange={(event) => setField("tarifaPorHora", event.target.value)}
+          />
         </div>
-        <TextField
-          label="Última actividad"
-          iconLeft={<CalendarPlusIcon />}
-          value={form.ultimaActividad}
-          onChange={(event) => setField("ultimaActividad", event.target.value)}
-        />
       </div>
     </Modal>
   );

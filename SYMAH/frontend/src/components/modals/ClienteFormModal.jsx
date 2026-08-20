@@ -4,7 +4,6 @@ import TextField from "../forms/TextField.jsx";
 import SelectField from "../forms/SelectField.jsx";
 import Modal from "./Modal.jsx";
 import {
-  BuildingIcon,
   CheckIcon,
   CurrencyIcon,
   MailIcon,
@@ -31,39 +30,48 @@ export default function ClienteFormModal({
 }) {
   const [form, setForm] = useState({
     nombre: initial?.nombre || "",
-    rubro: initial?.rubro || "",
-    ciudad: initial?.ciudad || "",
+    direccion: initial?.direccion || "",
     estado: initial?.estado || "activo",
-    contacto: initial?.contacto || "",
     correo: initial?.correo || "",
     telefono: initial?.telefono || "",
-    ultimoTrabajo: initial?.ultimoTrabajo || "",
-    balancePendiente: initial?.balancePendiente?.toString() || "0",
+
+    balancePendiente: initial?.balancePendiente?.toString() ?? "",
   });
 
   useEffect(() => {
     setForm({
       nombre: initial?.nombre || "",
-      rubro: initial?.rubro || "",
-      ciudad: initial?.ciudad || "",
+      direccion: initial?.direccion || "",
       estado: initial?.estado || "activo",
-      contacto: initial?.contacto || "",
       correo: initial?.correo || "",
       telefono: initial?.telefono || "",
-      ultimoTrabajo: initial?.ultimoTrabajo || "",
-      balancePendiente: initial?.balancePendiente?.toString() || "0",
+
+      balancePendiente: initial?.balancePendiente?.toString() ?? "",
     });
   }, [initial, open]);
 
   function setField(field, value) {
-    setForm((current) => ({ ...current, [field]: value }));
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
   }
 
   function handleSubmit() {
-    onSubmit({
-      ...form,
-      balancePendiente: Number(form.balancePendiente || 0),
-    });
+    const payload = {
+      nombre: form.nombre,
+      direccion: form.direccion,
+      estado: form.estado,
+      correo: form.correo,
+      telefono: form.telefono,
+      ultimoTrabajo: form.ultimoTrabajo,
+    };
+
+    if (initial) {
+      payload.balancePendiente = Number(form.balancePendiente || 0);
+    }
+
+    onSubmit(payload);
   }
 
   return (
@@ -83,6 +91,7 @@ export default function ClienteFormModal({
           >
             Cancelar
           </Button>
+
           <Button
             variant="primary"
             loading={submitting}
@@ -101,19 +110,15 @@ export default function ClienteFormModal({
           value={form.nombre}
           onChange={(event) => setField("nombre", event.target.value)}
         />
-        <TextField
-          label="Rubro"
-          iconLeft={<SearchIcon />}
-          value={form.rubro}
-          onChange={(event) => setField("rubro", event.target.value)}
-        />
+
         <div className="sy-form-grid sy-form-grid--2">
           <TextField
-            label="Ciudad"
+            label="Dirección"
             iconLeft={<MapPinIcon />}
-            value={form.ciudad}
-            onChange={(event) => setField("ciudad", event.target.value)}
+            value={form.direccion}
+            onChange={(event) => setField("direccion", event.target.value)}
           />
+
           <SelectField
             label="Estado"
             iconLeft={<TagIcon />}
@@ -127,12 +132,7 @@ export default function ClienteFormModal({
             ))}
           </SelectField>
         </div>
-        <TextField
-          label="Contacto"
-          iconLeft={<UserIcon />}
-          value={form.contacto}
-          onChange={(event) => setField("contacto", event.target.value)}
-        />
+
         <TextField
           label="Correo"
           type="email"
@@ -140,6 +140,7 @@ export default function ClienteFormModal({
           value={form.correo}
           onChange={(event) => setField("correo", event.target.value)}
         />
+
         <div className="sy-form-grid sy-form-grid--2">
           <TextField
             label="Teléfono"
@@ -147,22 +148,19 @@ export default function ClienteFormModal({
             value={form.telefono}
             onChange={(event) => setField("telefono", event.target.value)}
           />
-          <TextField
-            label="Saldo pendiente"
-            type="number"
-            iconLeft={<CurrencyIcon />}
-            value={form.balancePendiente}
-            onChange={(event) =>
-              setField("balancePendiente", event.target.value)
-            }
-          />
+
+          {initial && (
+            <TextField
+              label="Saldo pendiente"
+              type="number"
+              iconLeft={<CurrencyIcon />}
+              value={form.balancePendiente}
+              onChange={(event) =>
+                setField("balancePendiente", event.target.value)
+              }
+            />
+          )}
         </div>
-        <TextField
-          label="Último trabajo"
-          iconLeft={<SearchIcon />}
-          value={form.ultimoTrabajo}
-          onChange={(event) => setField("ultimoTrabajo", event.target.value)}
-        />
       </div>
     </Modal>
   );

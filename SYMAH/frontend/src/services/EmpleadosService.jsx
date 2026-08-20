@@ -21,10 +21,12 @@ export function getEmpleadosResumen(empleados = []) {
   const inactivos = empleados.filter(
     (empleado) => empleado.estado === "inactivo",
   ).length;
-  const nominaTotal = empleados.reduce(
-    (total, empleado) => total + empleado.salario,
-    0,
-  );
+  const nominaTotal = empleados.reduce((total, empleado) => {
+    const valorBase = empleado?.saldo ?? empleado?.saldoPorPagar ?? 0;
+    const valorNumerico = Number(valorBase);
+
+    return total + (Number.isFinite(valorNumerico) ? valorNumerico : 0);
+  }, 0);
 
   return {
     total: empleados.length,
@@ -47,8 +49,7 @@ export function filtrarEmpleados(
       termino.length === 0 ||
       empleado.nombre.toLowerCase().includes(termino) ||
       empleado.id.toLowerCase().includes(termino) ||
-      empleado.cargo.toLowerCase().includes(termino) ||
-      empleado.sede.toLowerCase().includes(termino);
+      empleado.cargo.toLowerCase().includes(termino);
 
     return coincideEstado && coincideBusqueda;
   });

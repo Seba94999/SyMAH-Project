@@ -26,6 +26,14 @@ export function getTrabajosResumen(trabajos = []) {
     (total, trabajo) => total + trabajo.monto,
     0,
   );
+  const gastoManoObra = trabajos.reduce(
+    (total, trabajo) => total + Number(trabajo.gastoManoObra || 0),
+    0,
+  );
+  const cobrado = trabajos.reduce(
+    (total, trabajo) => total + Number(trabajo.cobrado || 0),
+    0,
+  );
 
   return {
     total: trabajos.length,
@@ -33,6 +41,8 @@ export function getTrabajosResumen(trabajos = []) {
     finalizados,
     cancelados,
     presupuestoTotal,
+    gastoManoObra,
+    cobrado,
   };
 }
 
@@ -49,8 +59,9 @@ export function filtrarTrabajos(
       termino.length === 0 ||
       trabajo.nombre.toLowerCase().includes(termino) ||
       trabajo.id.toLowerCase().includes(termino) ||
-      trabajo.cliente.toLowerCase().includes(termino) ||
-      trabajo.responsable.toLowerCase().includes(termino);
+      (trabajo.cliente || "").toLowerCase().includes(termino) ||
+      trabajo.clienteId.toLowerCase().includes(termino) ||
+      trabajo.responsableId.toLowerCase().includes(termino);
 
     return coincideEstado && coincideBusqueda;
   });

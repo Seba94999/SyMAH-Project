@@ -5,36 +5,54 @@ const { createCrudRouter } = require("./crud-router");
 const router = express.Router();
 
 router.get("/health", (_req, res) => {
-  res.json({ status: "ok", service: "symah-backend" });
+  res.json({
+    status: "ok",
+    service: "symah-backend",
+  });
 });
 
-router.use("/clientes", createCrudRouter(modules.clientes.clientesRepository));
-router.use(
-  "/empleados",
-  createCrudRouter(modules.empleados.empleadosRepository),
-);
-router.use("/trabajos", createCrudRouter(modules.trabajos.trabajosRepository));
+router.use("/clientes", createCrudRouter(modules.clientes.clientesService));
+
+router.use("/empleados", createCrudRouter(modules.empleados.empleadosService));
+
+router.use("/trabajos", createCrudRouter(modules.trabajos.trabajosService));
+
 router.use(
   "/presupuestos",
-  createCrudRouter(modules.presupuestos.presupuestosRepository),
+  createCrudRouter(modules.presupuestos.presupuestosService),
 );
-router.use("/finanzas", createCrudRouter(modules.finanzas.finanzasRepository));
 
-const jornadasRouter = createCrudRouter(modules.jornadas.jornadasRepository, {
-  listResolver: (req) => {
-    const { empleadoId, trabajoId } = req.query;
+router.use(
+  "/transacciones",
+  createCrudRouter(modules.transacciones.transaccionesService),
+);
 
-    if (empleadoId) {
-      return modules.jornadas.jornadasRepository.findByEmpleadoId(empleadoId);
+router.use("/finanzas", createCrudRouter(modules.finanzas.finanzasService));
+
+router.use(
+  "/presupuestos",
+  createCrudRouter(modules.presupuestos.presupuestosService),
+);
+
+const jornadasRouter = createCrudRouter(modules.jornadas.jornadasService, {
+  listResolver: async (req) => {
+    const { empleado, empleadoId, trabajo, trabajoId } = req.query;
+
+    const empleadoCodigo = empleado || empleadoId;
+    const trabajoCodigo = trabajo || trabajoId;
+
+    if (empleadoCodigo) {
+      return modules.jornadas.jornadasService.getByEmpleado(empleadoCodigo);
     }
 
-    if (trabajoId) {
-      return modules.jornadas.jornadasRepository.findByTrabajoId(trabajoId);
+    if (trabajoCodigo) {
+      return modules.jornadas.jornadasService.getByTrabajo(trabajoCodigo);
     }
 
-    return modules.jornadas.jornadasRepository.findAll();
+    return modules.jornadas.jornadasService.getAll();
   },
 });
+
 router.use("/jornadas", jornadasRouter);
 
 module.exports = router;

@@ -1,9 +1,8 @@
-const {
-  presupuestosRepository,
-} = require("./repositories/presupuestos.repository");
+const { presupuestosService } = require("./services/presupuestos.service");
+
 const { PRESUPUESTO_ESTADOS } = require("./entities/presupuesto.entity");
 
 module.exports = {
-  presupuestosRepository,
+  presupuestosService,
   PRESUPUESTO_ESTADOS,
 };

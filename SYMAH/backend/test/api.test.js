@@ -83,7 +83,7 @@ const ENTITY_CASES = [
       estado: "pendiente",
       fecha: "2026-06-01",
       monto: 2000,
-      probabilidad: 50,
+      clienteRegistrado: true,
       trabajoVinculado: null,
     },
     updatePayload: { estado: "aprobado" },
@@ -108,6 +108,28 @@ const ENTITY_CASES = [
     updatePayload: { monto: 3500 },
     assertCreated(item) {
       assert.equal(item.concepto, "Ingreso Smoke");
+      assert.equal(item.monto, 3000);
+    },
+    assertUpdated(item) {
+      assert.equal(item.monto, 3500);
+    },
+  },
+  {
+    name: "transacciones",
+    path: "/transacciones",
+    createPayload: {
+      tipo: "cobro",
+      concepto: "Cobro Smoke",
+      referencia: "TR-001",
+      entidadOrigen: "trabajo",
+      entidadOrigenId: "TR-001",
+      entidadDestino: "caja",
+      fecha: "2026-06-01",
+      monto: 3000,
+    },
+    updatePayload: { monto: 3500 },
+    assertCreated(item) {
+      assert.equal(item.concepto, "Cobro Smoke");
       assert.equal(item.monto, 3000);
     },
     assertUpdated(item) {
@@ -215,13 +237,12 @@ test("jornadas validates required fields", async () => {
       trabajoId: "TR-001",
       fecha: "2026-06-01",
       inicio: "08:00",
-      fin: "10:00",
-      notas: "sin duracion",
+      notas: "sin hora de fin",
     },
   });
 
   assert.equal(invalid.response.status, 400);
-  assert.equal(invalid.data.message, "duracionHoras must be a valid number");
+  assert.equal(invalid.data.message, "fin must be a string");
 });
 
 test("jornadas CRUD works through the backend router", async () => {
@@ -256,4 +277,144 @@ test("jornadas CRUD works through the backend router", async () => {
   });
 
   assert.equal(deleted.response.status, 204);
+});
+
+test("trabajos exposes labor cost and charged traceability", async () => {
+  const trabajo = await request("/trabajos", {
+    method: "POST",
+    body: {
+      nombre: "Trabajo Trazable",
+      cliente: "Cliente Smoke",
+      responsable: "Ana Torres",
+      estado: "enCurso",
+      prioridad: "Media",
+      progreso: 30,
+      monto: 10000,
+      ultimaActualizacion: "2026-06-01",
+    },
+  });
+
+  assert.equal(trabajo.response.status, 201);
+  const trabajoId = trabajo.data.id;
+
+  const jornada = await request("/jornadas", {
+    method: "POST",
+    body: {
+      empleadoId: "EMP-001",
+      trabajoId,
+      fecha: "2026-06-02",
+      inicio: "08:00",
+      fin: "09:00",
+      notas: "mano de obra trazable",
+    },
+  });
+
+  assert.equal(jornada.response.status, 201);
+
+  const cobro = await request("/transacciones", {
+    method: "POST",
+    body: {
+      tipo: "cobro",
+      concepto: "Cobro trazable",
+      referencia: trabajoId,
+      entidadOrigen: "trabajo",
+      entidadOrigenId: trabajoId,
+      entidadDestino: "caja",
+      cliente: "Cliente Smoke",
+      fecha: "2026-06-03",
+      monto: 2500,
+    },
+  });
+
+  assert.equal(cobro.response.status, 201);
+
+  const traced = await request(`/trabajos/${trabajoId}`);
+
+  assert.equal(traced.response.status, 200);
+  assert.equal(traced.data.gastoManoObra, 7000);
+  assert.equal(traced.data.cobrado, 2500);
+  assert.equal(traced.data.saldoPorCobrar, 7500);
+  assert.equal(traced.data.trazabilidad.totalJornadas, 1);
+  assert.equal(traced.data.trazabilidad.totalMovimientosCobro, 1);
+});
+
+test("trabajos accumulates charged amount from linked cobro movements", async () => {
+  const trabajo = await request("/trabajos", {
+    method: "POST",
+    body: {
+      nombre: "Trabajo Cobros Acumulados",
+      cliente: "Cliente Cobros",
+      responsable: "Ana Torres",
+      estado: "enCurso",
+      prioridad: "Media",
+      progreso: 50,
+      monto: 20000,
+      ultimaActualizacion: "2026-06-05",
+    },
+  });
+
+  assert.equal(trabajo.response.status, 201);
+  const trabajoId = trabajo.data.id;
+
+  const primerCobro = await request("/transacciones", {
+    method: "POST",
+    body: {
+      tipo: "cobro",
+      concepto: "Primer cobro",
+      referencia: trabajoId,
+      entidadOrigen: "trabajo",
+      entidadOrigenId: trabajoId,
+      entidadDestino: "caja",
+      cliente: "Cliente Cobros",
+      fecha: "2026-06-06",
+      monto: 3000,
+    },
+  });
+
+  assert.equal(primerCobro.response.status, 201);
+
+  const segundoCobro = await request("/transacciones", {
+    method: "POST",
+    body: {
+      tipo: "cobro",
+      concepto: "Segundo cobro",
+      referencia: trabajoId,
+      entidadOrigen: "trabajo",
+      entidadOrigenId: trabajoId,
+      entidadDestino: "caja",
+      cliente: "Cliente Cobros",
+      fecha: "2026-06-07",
+      monto: 4000,
+    },
+  });
+
+  assert.equal(segundoCobro.response.status, 201);
+
+  const conDosCobros = await request(`/trabajos/${trabajoId}`);
+  assert.equal(conDosCobros.data.cobrado, 7000);
+  assert.equal(conDosCobros.data.saldoPorCobrar, 13000);
+
+  const cobroEditado = await request(`/transacciones/${segundoCobro.data.id}`, {
+    method: "PATCH",
+    body: { monto: 5000 },
+  });
+
+  assert.equal(cobroEditado.response.status, 200);
+
+  const despuesDeEditar = await request(`/trabajos/${trabajoId}`);
+  assert.equal(despuesDeEditar.data.cobrado, 8000);
+  assert.equal(despuesDeEditar.data.saldoPorCobrar, 12000);
+
+  const cobroEliminado = await request(
+    `/transacciones/${primerCobro.data.id}`,
+    {
+      method: "DELETE",
+    },
+  );
+
+  assert.equal(cobroEliminado.response.status, 204);
+
+  const despuesDeEliminar = await request(`/trabajos/${trabajoId}`);
+  assert.equal(despuesDeEliminar.data.cobrado, 5000);
+  assert.equal(despuesDeEliminar.data.saldoPorCobrar, 15000);
 });

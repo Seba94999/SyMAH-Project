@@ -14,9 +14,12 @@ export default function useJornadas(empleadoId) {
     setError(null);
 
     try {
-      const data = await JornadasService.getJornadasByEmpleado(
-        empleadoId || "",
-      );
+      if (!empleadoId) {
+        setJornadas([]);
+        return;
+      }
+
+      const data = await JornadasService.getJornadasByEmpleado(empleadoId);
       setJornadas(data);
     } catch (loadError) {
       setError(loadError);

@@ -2,6 +2,7 @@ import { DataTable } from "../Tables.jsx";
 import Button from "../ui/Button.jsx";
 import SelectField from "../forms/SelectField.jsx";
 import Modal from "./Modal.jsx";
+import { formatCurrency } from "../../utils/formatters.js";
 
 export default function EmpleadoDetailModal({
   open,
@@ -31,7 +32,9 @@ export default function EmpleadoDetailModal({
       <div className="sy-stack">
         <section className="sy-section">
           <header className="sy-section__header">
-            <strong className="sy-section__title">Jornadas registradas</strong>
+            <strong className="sy-section__title">
+              Jornadas y transacciones
+            </strong>
             <Button variant="primary" onClick={onNewJornada}>
               Nueva jornada
             </Button>
@@ -39,8 +42,31 @@ export default function EmpleadoDetailModal({
 
           <p className="sy-page__description">
             Desde aquí puedes registrar, editar o eliminar las jornadas del
-            empleado seleccionado.
+            empleado seleccionado y revisar el impacto financiero asociado.
           </p>
+
+          <div className="sy-summary-grid" style={{ marginBottom: 16 }}>
+            <article className="sy-summary-card">
+              <span className="sy-summary-card__label">Pagado</span>
+              <strong className="sy-summary-card__value">
+                {formatCurrency(empleado.pagado != null ? empleado.pagado : 0)}
+              </strong>
+            </article>
+            <article className="sy-summary-card">
+              <span className="sy-summary-card__label">Saldo por pagar</span>
+              <strong className="sy-summary-card__value">
+                {formatCurrency(
+                  Number(empleado.saldo ?? empleado.saldoPorPagar ?? 0),
+                )}
+              </strong>
+            </article>
+            <article className="sy-summary-card">
+              <span className="sy-summary-card__label">Transacciones</span>
+              <strong className="sy-summary-card__value">
+                {empleado.transacciones?.length || 0}
+              </strong>
+            </article>
+          </div>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <SelectField

@@ -1,58 +1,160 @@
+const { TrabajoModel } = require("../persistence/trabajo.schema");
+const { toDomain, toPersistence } = require("../persistence/trabajo.mapper");
+const { generateCode } = require("../../../shared/persistence/code-generator");
+const { ClienteModel } = require("../../clientes/persistence/cliente.schema");
 const {
-  createInMemoryCollection,
-} = require("../../../shared/database/in-memory-store");
-const { createTrabajo } = require("../entities/trabajo.entity");
+  EmpleadoModel,
+} = require("../../empleados/persistence/empleado.schema");
 
-const trabajosStore = createInMemoryCollection({
-  collectionName: "trabajos",
-  idPrefix: "TR",
-  hydrate: createTrabajo,
-  initialData: [
-    {
-      id: "TR-001",
-      nombre: "Mantencion estructura norte",
-      cliente: "Constructora Valle Azul",
-      responsable: "Ana Torres",
-      estado: "enCurso",
-      prioridad: "Alta",
-      progreso: 72,
-      monto: 18500000,
-      ultimaActualizacion: "2026-05-26",
-    },
-    {
-      id: "TR-002",
-      nombre: "Revision patio de carga",
-      cliente: "Logistica Ruta Sur",
-      responsable: "Marco Fuentes",
-      estado: "enPausa",
-      prioridad: "Media",
-      progreso: 41,
-      monto: 9200000,
-      ultimaActualizacion: "2026-05-23",
-    },
-  ],
-});
+const {
+  resolveObjectId,
+} = require("../../../shared/persistence/reference-resolver");
 
 class TrabajosRepository {
-  findAll() {
-    return trabajosStore.list();
+  async #populate(document) {
+    await document.populate("cliente");
+    await document.populate("responsable");
+
+    return document;
   }
 
-  findById(trabajoId) {
-    return trabajosStore.getById(trabajoId);
+  async findAll() {
+    const documents = await TrabajoModel.find()
+      .populate("cliente")
+      .populate("responsable");
+
+    return documents.map(toDomain);
   }
 
-  create(payload) {
-    return trabajosStore.create(payload);
+  async findById(trabajoId) {
+    const document = await TrabajoModel.findOne({
+      codigo: trabajoId,
+    })
+      .populate("cliente")
+      .populate("responsable");
+
+    return toDomain(document);
   }
 
-  update(trabajoId, patch) {
-    return trabajosStore.update(trabajoId, patch);
+  async findByCliente(clienteCodigo) {
+    console.log("findByCliente:", clienteCodigo);
+    const documents = await TrabajoModel.find({
+      cliente: await resolveObjectId(ClienteModel, clienteCodigo, "Cliente"),
+    })
+      .populate("cliente")
+      .populate("responsable");
+
+    return documents.map(toDomain);
   }
 
-  delete(trabajoId) {
-    return trabajosStore.remove(trabajoId);
+  async create(payload) {
+    const codigo = await generateCode(TrabajoModel, "TR");
+
+    const persistence = await toPersistence({
+      ...payload,
+      id: codigo,
+    });
+
+    const cliente = await resolveObjectId(
+      ClienteModel,
+      payload.clienteId,
+      "Cliente",
+    );
+
+    const responsable = await resolveObjectId(
+      EmpleadoModel,
+      payload.responsableId,
+      "Empleado",
+    );
+
+    const data = {
+      ...persistence,
+      cliente,
+      responsable,
+    };
+
+    console.log("DATA ANTES DE MONGOOSE:", data);
+
+    const document = new TrabajoModel(data);
+
+    console.log("DOCUMENTO ANTES DE SAVE:", document.toObject());
+
+    await document.save();
+
+    return toDomain(await this.#populate(document));
+  }
+
+  async update(trabajoId, patch) {
+    const document = await TrabajoModel.findOne({
+      codigo: trabajoId,
+    });
+
+    if (!document) {
+      return null;
+    }
+
+    if (patch.clienteId) {
+      document.cliente = await resolveObjectId(
+        ClienteModel,
+        patch.clienteId,
+        "Cliente",
+      );
+    }
+
+    if (patch.responsableId) {
+      document.responsable = await resolveObjectId(
+        EmpleadoModel,
+        patch.responsableId,
+        "Empleado",
+      );
+    }
+
+    if (patch.nombre !== undefined) {
+      document.nombre = patch.nombre;
+    }
+
+    if (patch.estado !== undefined) {
+      document.estado = patch.estado;
+    }
+
+    if (patch.prioridad !== undefined) {
+      document.prioridad = patch.prioridad;
+    }
+
+    if (patch.monto !== undefined) {
+      document.monto = patch.monto;
+    }
+
+    if (patch.gastoManoObra !== undefined) {
+      document.gastoManoObra = patch.gastoManoObra;
+    }
+
+    if (patch.cobrado !== undefined) {
+      document.cobrado = patch.cobrado;
+    }
+
+    if (patch.saldoPorCobrar !== undefined) {
+      document.saldoPorCobrar = patch.saldoPorCobrar;
+    }
+
+    if (patch.ultimaActualizacion !== undefined) {
+      document.ultimaActualizacion = patch.ultimaActualizacion;
+    }
+
+    await document.save();
+
+    return toDomain(await this.#populate(document));
+  }
+
+  async delete(trabajoId) {
+    const document = await TrabajoModel.findOneAndDelete({
+      codigo: trabajoId,
+    });
+
+    return !!document;
   }
 }
 
-module.exports = { trabajosRepository: new TrabajosRepository() };
+module.exports = {
+  trabajosRepository: new TrabajosRepository(),
+};

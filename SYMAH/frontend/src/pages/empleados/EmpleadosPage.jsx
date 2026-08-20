@@ -14,13 +14,14 @@ import EmpleadoDetailModal from "../../components/modals/EmpleadoDetailModal.jsx
 import JornadaFormModal from "../../components/modals/JornadaFormModal.jsx";
 import ConfirmModal from "../../components/modals/ConfirmModal.jsx";
 import Button from "../../components/ui/Button.jsx";
+import ErrorModal from "../../components/modals/ErrorModal.jsx";
 import { PencilIcon, TrashIcon } from "../../components/Ui.jsx";
 
 const COLUMNAS_EMPLEADOS = [
   { key: "id", label: "ID" },
   { key: "nombre", label: "Empleado" },
   { key: "cargo", label: "Cargo" },
-  { key: "sede", label: "Sede" },
+
   {
     key: "estado",
     label: "Estado",
@@ -31,10 +32,10 @@ const COLUMNAS_EMPLEADOS = [
     ),
   },
   {
-    key: "salario",
-    label: "Salario",
+    key: "saldo",
+    label: "Saldo",
     align: "right",
-    render: (empleado) => formatCurrency(empleado.salario),
+    render: (empleado) => formatCurrency(empleado.saldo),
   },
 ];
 
@@ -86,6 +87,8 @@ export default function EmpleadosPage() {
     create: crearEmpleado,
     update: actualizarEmpleado,
     remove: eliminarEmpleado,
+    error: empleadosError,
+    reload: reloadEmpleados,
   } = useEmpleados();
 
   const [empleadoSeleccionadoId, setEmpleadoSeleccionadoId] = useState(null);
@@ -164,12 +167,21 @@ export default function EmpleadosPage() {
   }
 
   async function handleSubmitJornada(payload) {
-    const base = { ...payload, empleadoId: empleadoSeleccionado?.id };
+    const base = {
+      ...payload,
+      empleadoId: empleadoSeleccionado?.id,
+      empleado: empleadoSeleccionado?.id,
+      trabajoId: payload.trabajoId,
+      trabajo: payload.trabajoId,
+    };
+
     if (editing) {
       await actualizarJornada(editing.id, base);
     } else {
       await crearJornada(base);
     }
+
+    await reloadEmpleados();
     setOpenForm(false);
     setEditing(null);
   }
@@ -190,7 +202,8 @@ export default function EmpleadosPage() {
           Controla el estado operativo, la carga laboral y la distribución de
           nómina del equipo. La card resume al empleado seleccionado, mientras
           que la tabla permite crear, editar y eliminar empleados; usa
-          "Administrar jornadas" para abrir el modal de gestión de jornadas.
+          "Administrar jornadas" para abrir el modal de gestión de jornadas y
+          revisar sus transacciones asociadas.
         </p>
       </header>
 
@@ -240,7 +253,7 @@ export default function EmpleadosPage() {
             <TableFilters
               searchValue={busqueda}
               onSearchChange={setBusqueda}
-              searchPlaceholder="Buscar por nombre, cargo o sede"
+              searchPlaceholder="Buscar por nombre, cargo"
               filterValue={filtroEstado}
               onFilterChange={setFiltroEstado}
               filterOptions={[
@@ -296,9 +309,7 @@ export default function EmpleadosPage() {
                 <p>
                   <strong>Cargo:</strong> {empleadoSeleccionado.cargo}
                 </p>
-                <p>
-                  <strong>Sede:</strong> {empleadoSeleccionado.sede}
-                </p>
+
                 <p>
                   <strong>Jornada:</strong> {empleadoSeleccionado.jornada}
                 </p>
@@ -350,6 +361,11 @@ export default function EmpleadosPage() {
         }}
         onSubmit={handleSubmitEmpleado}
         submitting={empleadosLoading}
+      />
+      <ErrorModal
+        open={!!empleadosError}
+        message={empleadosError?.message || String(empleadosError)}
+        onClose={() => reloadEmpleados && reloadEmpleados()}
       />
 
       <ConfirmModal

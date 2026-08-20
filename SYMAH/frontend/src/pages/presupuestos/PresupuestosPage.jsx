@@ -1,4 +1,5 @@
 import { useState } from "react";
+import useClientes from "../../hooks/useClientes.jsx";
 import {
   Badge,
   Button,
@@ -17,6 +18,7 @@ import {
 } from "../../services/PresupuestosService.jsx";
 import ConfirmModal from "../../components/modals/ConfirmModal.jsx";
 import PresupuestoFormModal from "../../components/modals/PresupuestoFormModal.jsx";
+import ErrorModal from "../../components/modals/ErrorModal.jsx";
 import usePresupuestos from "../../hooks/usePresupuestos.jsx";
 
 const COLUMNAS_PRESUPUESTOS = [
@@ -41,6 +43,7 @@ const COLUMNAS_PRESUPUESTOS = [
 ];
 
 export default function PresupuestosPage() {
+  const { clientes } = useClientes();
   const {
     loading,
     presupuestosFiltrados,
@@ -52,6 +55,8 @@ export default function PresupuestosPage() {
     create,
     update,
     remove,
+    error: presupuestosError,
+    reload: reloadPresupuestos,
   } = usePresupuestos();
 
   const [presupuestoSeleccionadoId, setPresupuestoSeleccionadoId] =
@@ -69,14 +74,29 @@ export default function PresupuestosPage() {
     presupuestosFiltrados[0] ||
     null;
 
+  function handleVerPresupuesto() {
+    if (!presupuestoSeleccionado?.presupuesto) {
+      return;
+    }
+
+    const pdfWindow = window.open();
+    if (!pdfWindow) return;
+
+    pdfWindow.document.write(
+      `<iframe src="${presupuestoSeleccionado.presupuesto}" style="border:0;width:100vw;height:100vh"></iframe>`,
+    );
+    pdfWindow.document.close();
+  }
+
   return (
     <section className="sy-page">
       <header className="sy-page__header">
         <p className="sy-page__eyebrow">Comercial</p>
         <h1 className="sy-page__title">Presupuestos</h1>
         <p className="sy-page__description">
-          Administra el ciclo comercial y visualiza qué presupuestos están
-          listos para convertirse en trabajo.
+          Administra el ciclo comercial, visualiza qué presupuestos están listos
+          para convertirse en trabajo y sigue su avance antes de materializar
+          transacciones.
         </p>
       </header>
 
@@ -195,13 +215,33 @@ export default function PresupuestosPage() {
                   <strong>Fecha:</strong> {presupuestoSeleccionado.fecha}
                 </p>
                 <p>
-                  <strong>Probabilidad:</strong>{" "}
-                  {presupuestoSeleccionado.probabilidad}%
-                </p>
-                <p>
                   <strong>Trabajo vinculado:</strong>{" "}
                   {presupuestoSeleccionado.trabajoVinculado || "Sin vincular"}
                 </p>
+                {presupuestoSeleccionado.clienteRegistrado === false ? (
+                  <p>
+                    <strong>Registro de cliente pendiente:</strong> este
+                    presupuesto fue creado con un cliente nuevo que aún no está
+                    registrado.
+                  </p>
+                ) : null}
+                <p>
+                  <strong>Lectura operativa:</strong> un presupuesto aprobado
+                  puede convertirse en un trabajo y, a partir de ahi, generar
+                  transacciones en el flujo financiero.
+                </p>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <Button
+                    variant="secondary"
+                    onClick={handleVerPresupuesto}
+                    disabled={!presupuestoSeleccionado.presupuesto}
+                  >
+                    Ver Presupuesto
+                  </Button>
+                  {!presupuestoSeleccionado.presupuesto ? (
+                    <span>El presupuesto no esta cargado.</span>
+                  ) : null}
+                </div>
               </div>
             ) : (
               <EmptyState
@@ -216,6 +256,7 @@ export default function PresupuestosPage() {
       <PresupuestoFormModal
         open={openForm}
         initial={editingPresupuesto}
+        clientesRegistrados={clientes}
         onClose={() => {
           setOpenForm(false);
           setEditingPresupuesto(null);
@@ -251,6 +292,12 @@ export default function PresupuestosPage() {
           setPresupuestoAEliminarId(null);
         }}
         onCancel={() => setOpenConfirm(false)}
+      />
+
+      <ErrorModal
+        open={!!presupuestosError}
+        message={presupuestosError?.message || String(presupuestosError)}
+        onClose={() => reloadPresupuestos && reloadPresupuestos()}
       />
     </section>
   );

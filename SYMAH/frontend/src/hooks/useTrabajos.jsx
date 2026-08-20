@@ -8,6 +8,8 @@ import {
   updateTrabajo,
 } from "../services/TrabajosService.jsx";
 
+const TRABAJOS_SYNC_EVENT = "symah:trabajos-sync";
+
 export default function useTrabajos() {
   const [trabajos, setTrabajos] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -31,6 +33,14 @@ export default function useTrabajos() {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  useEffect(() => {
+    window.addEventListener(TRABAJOS_SYNC_EVENT, load);
+
+    return () => {
+      window.removeEventListener(TRABAJOS_SYNC_EVENT, load);
+    };
   }, [load]);
 
   const trabajosFiltrados = useMemo(
@@ -57,11 +67,15 @@ export default function useTrabajos() {
   }, []);
 
   const update = useCallback(async (trabajoId, patch) => {
+    console.log("HOOK UPDATE EJECUTADO");
+    console.log("ID:", trabajoId);
+    console.log("PATCH:", patch);
     setLoading(true);
     setError(null);
 
     try {
       const updated = await updateTrabajo(trabajoId, patch);
+      console.log("RESPUESTA DEL BACKEND:", updated);
       setTrabajos((current) =>
         current.map((trabajo) =>
           trabajo.id === trabajoId ? updated : trabajo,
